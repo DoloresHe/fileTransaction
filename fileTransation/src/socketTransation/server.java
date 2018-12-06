@@ -106,11 +106,10 @@ public class server {
                     System.out.println(a);
                     if(a.equals("finish")){
                     	String[] ww=(String[]) filenames.toArray();
-                    	file.uniteFile(ww, "C://test.sql");
-                    	return;
+                    	//file.uniteFile(ww, "D://test.sql");
                     }
                     	
-                    String savePath =  "C:/"+ a;  
+                    String savePath =  "D:/"+ a;  
                     filenames.add(savePath);
                     long length = dis.readLong();  
                     dos = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(savePath)));  
