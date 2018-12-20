@@ -18,21 +18,28 @@ import fileOperation.file;
 
 public class server {  
       
-        private int defaultBindPort = 6666;    //默认监听端口号为10000  
+        private int defaultBindPort = 6666;    //默认监听端口号为6666
         private int tryBindTimes = 0;           //初始的绑定端口的次数设定为0  
           
-        private ServerSocket serverSocket;      //服务套接字等待对方的连接和文件发送  
+    	private static int portP=6663;	//心跳检测端口号
+    	private static int port_f=6668;	//finish端口号
+    	
+        private ServerSocket serverSocket;      //服务套接字等待文件发送  
+        private ServerSocket serverSocket1;      //服务套接字等待心跳连接 
+        private ServerSocket serverSocket2;      //服务套接字等待finish  
           
         private ExecutorService executorService;    //线程池  
         private final int POOL_SIZE = 4;            //单个CPU的线程池大小   
           
-
-    	private static int portP=6663;
     	
-		 static int count=0;
-		 static final Object object=new Object();
+		static int count=0;//接收文件个数
+		static final Object object=new Object();//
 		 
-        public static ArrayList<String> filenames=new ArrayList<String>();
+		int file_count=21; //文件块数量
+		int net_count=4;//网卡连接数量
+		
+        public static ArrayList<String> filenames=new ArrayList<String>();//所有文件名的集合
+        
         /** 
          * 不带参数的构造器，选用默认的端口号 
          * @throws Exception 
@@ -41,6 +48,7 @@ public class server {
             try {  
                 this.bingToServerPort(defaultBindPort);  
                 executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() * POOL_SIZE);  
+                new Thread(new runs()).start(); 
                 System.out.println("开辟线程数 ： " + Runtime.getRuntime().availableProcessors() * POOL_SIZE);  
             } catch (Exception e) {  
                 throw new Exception("绑定端口不成功!");  
@@ -56,14 +64,33 @@ public class server {
             try {  
                 this.bingToServerPort(port);  
                 executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() * POOL_SIZE);  
+                new Thread(new runs()).start();
             } catch (Exception e) {  
                 throw new Exception("绑定端口不成功!");  
             }  
         }  
-          
+        class runs implements Runnable {
+        	@Override
+        	public void run() {
+                while(true){
+                    Socket socket=null;
+                    try{
+                        socket=serverSocket1.accept();                        //主线程获取客户端连接
+                        Thread workThread=new Thread(new PPP(socket));    //创建线程
+                        workThread.start();                                    //启动线程
+                    }catch(Exception e){
+                        e.printStackTrace();
+                    }
+        	}
+        	
+        }
+        }
+        
         private void bingToServerPort(int port) throws Exception{  
             try {  
                 serverSocket = new ServerSocket(port);  
+                serverSocket1 = new ServerSocket(portP); 
+                serverSocket2 = new ServerSocket(6668);   
                 System.out.println(port);  
                 System.out.println("服务启动!");  
             } catch (Exception e) {  
@@ -79,14 +106,14 @@ public class server {
           
         public void service(){  
             Socket socket = null; 
-            while(true) {
 	            int i=0;
-	            while (i<4) {  
+	            while (i<net_count) {  
 	                try {  
 	                	i++;
 	                    socket = serverSocket.accept();  
+	                    //socket1 = serverSocket1.accept();  
 	                    executorService.execute(new Handler(socket)); 
-	                    new Thread(new PPP(portP++)).start();
+	                  //  new Thread(new PPP(socket1)).start();
 	                } catch (Exception e) {  
 	                    e.printStackTrace();  
 	                }  
@@ -95,7 +122,8 @@ public class server {
 	            while(true){  
 	               if(executorService.isTerminated()){  
 	               	try {
-	               		finish(6668,"C:/");
+	               		System.out.println("prepare finish");
+	               		finish(port_f,"C:/",serverSocket2);
 						//file.uniteFile(filenames, "C://test.sql");
 					} catch (Exception e) {
 						// TODO Auto-generated catch block
@@ -110,8 +138,8 @@ public class server {
 						// TODO Auto-generated catch block
 						e.printStackTrace();
 					}    
-	            }    		
-            }
+	            }   		
+            
         }  
           
       
@@ -132,14 +160,13 @@ public class server {
                 	DataInputStream dis = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
 				    while(true) {
 	                    synchronized (object){
-	                    	if(count<21)
+	                    	if(count<file_count)
 	                    		count++;
 	                    	else break;
 	                    }
                     String a=dis.readUTF();//这里做一个跳出？？？
                   //  System.out.println(a);
                     if(a.equals("finish")){
-                    	//String[] ww=(String[]) filenames.toArray();
                     	file.uniteFile(filenames, "C://test.sql");
                     	break;
                     }
@@ -156,7 +183,6 @@ public class server {
                         dos.write(buf, 0, read); 
                         if(passedlen==length)
                         	break;
-                      //  System.out.println("文件[" + savePath + "]已经接收: " + passedlen * 100L/ length + "%");  
                     }  
                     System.out.println("文件: " + savePath + "接收完成!");  
             		String crc_b=file.getCRC32(savePath);
@@ -187,13 +213,13 @@ public class server {
             }  
         }       
 
-		public static void finish(int port,String fileDir) {//6668,"c:/"
+		public static void finish(int port,String fileDir,ServerSocket serverSocket2) {//6668,"c:/"
     		//1、创建一个服务器端Socket，即ServerSocket，指定绑定的端口，并监听此端口
-    		ServerSocket serverSocket;
+    		//ServerSocket socket1;
 			try {
-				serverSocket = new ServerSocket(port);//1024-65535的某个端口
+			//	socket1 = new ServerSocket(port);//1024-65535的某个端口
         		//2、调用accept()方法开始监听，等待客户端的连接
-        		Socket socket= serverSocket.accept();
+        		Socket socket=  serverSocket2.accept();
         		//3、获取输入流，并读取客户端信息
         		DataInputStream is = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
         		String fileName=fileDir+is.readUTF();
@@ -225,7 +251,7 @@ public class server {
         		//5、关闭资源
         		is.close();
         		socket.close();
-        		serverSocket.close();
+        		//socket1.close();
 		
 			} catch (Exception e) {
 				// TODO Auto-generated catch block
@@ -236,29 +262,30 @@ public class server {
 	
 	        
         class PPP implements Runnable{
-        	int port;
-        	public PPP(int port) {
-        		this.port=port;
-        	}
+            private Socket socket;  
+              
+            public PPP(Socket socket){  
+                this.socket = socket;  
+            }  
 			@Override
 	        public void run() {
 	    		//1、创建一个服务器端Socket，即ServerSocket，指定绑定的端口，并监听此端口
-	    		ServerSocket serverSocket;
+	    		//ServerSocket serverSocket;
 				try {
-					serverSocket = new ServerSocket(port);//1024-65535的某个端口
+				//	serverSocket = new ServerSocket(port);//1024-65535的某个端口
 	        		//2、调用accept()方法开始监听，等待客户端的连接
-	        		Socket socket= serverSocket.accept();
+	        		//Socket socket= serverSocket1.accept();
 					//2、获取输出流，向服务器端发送信息 
-	                DataOutputStream dos = new DataOutputStream(socket.getOutputStream()); 
+	                //DataOutputStream dos = new DataOutputStream(socket.getOutputStream()); 
 	        		//3、获取输入流，并读取客户端信息
 	        		DataInputStream dis = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
 	        		while(true) { 
 		                //dos.writeUTF("finish");  
 		        		String a=dis.readUTF();
 		        		System.out.println(socket.getInetAddress()+" "+a);
-		                dos.writeUTF("ok");
-		                dos.flush(); 
-		                Thread.sleep(10000);
+//		                dos.writeUTF("ok");
+//		                dos.flush(); 
+		                Thread.sleep(50000);
 	        		} 
 				} catch (Exception e) {
 					// TODO Auto-generated catch block
@@ -268,7 +295,7 @@ public class server {
 	        }
         }
         public static void main(String[] args) throws Exception{  
-            new server(6667).service();  
+            new server().service();  
             
         }  
     }  

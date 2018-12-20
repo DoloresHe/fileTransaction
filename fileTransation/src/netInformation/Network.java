@@ -11,7 +11,9 @@ import org.hyperic.sigar.SigarException;
 
 
 public class Network {
-     
+     	/*
+     	 * 获取网卡信息，i对应设备，对应网卡速度
+     	 */
     	public static HashMap<Integer,Float> net() throws Exception {
             Sigar sigar = new Sigar();
             String ifNames[] = sigar.getNetInterfaceList();
@@ -26,6 +28,7 @@ public class Network {
                     //System.out.println("!IFF_UP...skipping getNetInterfaceStat");
                     continue;
                 }
+                System.out.println(ipaddress);
                 HashSet<String> set=new HashSet<>();
                 set.add("192.168.0.36");
                 set.add("192.168.0.138");
@@ -40,49 +43,52 @@ public class Network {
                 speeds1.put(i,(float) 1.0);
                 }
             }
-                try {
-                	Thread.sleep(10000); //暂停，每一秒输出一次
-                    }catch (InterruptedException e) {
-                    	System.out.println(e);
-                   }
-                float sum=0.0f;      
-                for(Map.Entry<Integer, Float> w:speeds.entrySet()) {
-                    String name = ifNames[w.getKey()];
-                    NetInterfaceStat ifstat = sigar.getNetInterfaceStat(name);
-                   // System.out.println(name);
-                    speeds.put(w.getKey(),ifstat.getTxBytes()-w.getValue());
-                    sum+=w.getValue();
-                }		  
-                Iterator<Entry<Integer, Float>> it = speeds.entrySet().iterator();
-                Iterator<Entry<Integer, Float>> it1 = speeds1.entrySet().iterator();
-                while(it.hasNext()&&it1.hasNext()){
-                    Entry<Integer, Float> w = it.next();
-                    Entry<Integer, Float> w1 = it1.next();
+            try {
+                Thread.sleep(10000); //暂停，每一秒输出一次
+            }
+            catch(InterruptedException e) {
+                System.out.println(e);
+            }
+            float sum=0.0f;      
+            for(Map.Entry<Integer, Float> w:speeds.entrySet()) {
+            	String name = ifNames[w.getKey()];
+            	NetInterfaceStat ifstat = sigar.getNetInterfaceStat(name);
+                // System.out.println(name);
+                speeds.put(w.getKey(),ifstat.getTxBytes()-w.getValue());
+                sum+=w.getValue();
+            }		  
+            Iterator<Entry<Integer, Float>> it = speeds.entrySet().iterator();
+            Iterator<Entry<Integer, Float>> it1 = speeds1.entrySet().iterator();
+            while(it.hasNext()&&it1.hasNext()){
+            	Entry<Integer, Float> w = it.next();
+            	Entry<Integer, Float> w1 = it1.next();
                 //for(Map.Entry<Integer, Float> w:speeds.entrySet()) {
-                    if(w.getValue()==0) {
-                    	sum-=w.getValue();
-                    	it.remove();
-                    	it1.remove();
-                    }
-                }       
-                float sum1=speeds1.size();   
+                if(w.getValue()==0) {
+                	sum-=w.getValue();
+                	it.remove();
+                	it1.remove();
+                }
+            }       
+            float sum1=speeds1.size();   
 //                for (Map.Entry<Integer, Float> entry : speeds1.entrySet()) {
 //           		 
 //        		    System.out.println("Key = " + sigar.getNetInterfaceConfig(ifNames[entry.getKey()]).getAddress() + ", Value = " + entry.getValue());
 //        		 
 //        		}      
-                for(Map.Entry<Integer, Float> w:speeds.entrySet()) {
-                    speeds.put(w.getKey(),w.getValue()/sum);
-                }       
+            for(Map.Entry<Integer, Float> w:speeds.entrySet()) {
+                speeds.put(w.getKey(),w.getValue()/sum);
+            }       
  
-		for (Map.Entry<Integer, Float> entry : speeds1.entrySet()) {
-		 
-                    speeds1.put(entry.getKey(),entry.getValue()/sum1);
-		    System.out.println("Key = " + sigar.getNetInterfaceConfig(ifNames[entry.getKey()]).getAddress() + ", Value = " + entry.getValue());
-		 
-		}      
-                return speeds1;
+            for (Map.Entry<Integer, Float> entry : speeds1.entrySet()) {
+            	speeds1.put(entry.getKey(),entry.getValue()/sum1);
+            	System.out.println("Key = " + sigar.getNetInterfaceConfig(ifNames[entry.getKey()]).getAddress() + ", Value = " + entry.getValue());
+            }      
+            return speeds1;
         }
+    	
+    	/*
+    	 * 获取所有符合条件的ip
+    	 */
     	public static HashMap<Integer,String> IP(HashMap<Integer,Float> speeds) throws Exception {
             Sigar sigar = new Sigar();
             String ifNames[] = sigar.getNetInterfaceList();
@@ -92,11 +98,16 @@ public class Network {
     		}
     		return ips;
     	}
-//    	public static void main(String[] args) {
-//    		try{
-//    			net();
-//    		}	catch (Exception e1) {
-//            e1.printStackTrace();
-//        }
-//    	}
+    	
+    	/*
+    	 * test
+    	 */
+    	public static void main(String[] args) {
+    		try{
+    			net();
+    		}	
+    		catch (Exception e1) {
+    			e1.printStackTrace();
+    		}
+    	}
     }  

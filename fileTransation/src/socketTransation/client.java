@@ -28,17 +28,31 @@ import fileOperation.file;
 
 public class client {  
       
+		
+		static int count=0;//发送文件计数
+		
+        private static String sendFilePath = "D:/test.sql"; //目标传输文件全路径  
+        private static String fileName = "test.sql";//目标传输文件名
+        
+        static int port_a=6667;//文件传输端口号
+        static int port_f=6668;//finish传输端口号
+		static int portP=6663;//心跳检测端口号
+		
+        static int portA=6665;//心跳检测本地绑定端口号
+		 
+		int file_size=204800;//文件切分块大小
+		
+		static String server_ip="120.78.188.54";
+		
        // private static ArrayList<String> fileList = new ArrayList<String>();  
-		private static String[] names;  
-		 static int count=0;
-		 static final Object object=new Object();
-		private static HashMap<Integer,String> ips=new HashMap<>() ; 
-        private static String sendFilePath = "D:/test.sql";   
-        private static String fileName = "test.sql";
+		private static String[] names;  //切分后所有文件名的集合
+		
+		private static HashMap<Integer,String> ips=new HashMap<>(); //所有ip的集合
+		
+		static final Object object=new Object();//sychronized同步锁定object
 
-		 static int portP=6663;
         /** 
-         * 不带参数的构造器。使用默认的传送文件的文件夹， 
+         * 不带参数的构造器。使用默认的传送文件的文件夹 
          */  
         public client(){  
             getFilePath(sendFilePath);  
@@ -52,28 +66,23 @@ public class client {
            // ExecutorService executorService1 = Executors.newCachedThreadPool();  
 //            Vector<Integer> vector = getRandom(fileList.size());  
 //            for(Integer integer : vector){  
+            
         	long startTime = System.currentTimeMillis(); //程序开始记录时间
-    		for(Map.Entry<Integer, String> w:ips.entrySet()) {
-//                String filePath = fileList.get(integer.intValue());  
-                executorService.execute(sendFile(w.getValue()));  
-               // executorService1.execute(ppp(w.getValue(),"120.78.188.54",6669));
-                new Thread(ppp(w.getValue(),"120.78.188.54",portP++)).start();
+        	
+    		for(Map.Entry<Integer, String> w:ips.entrySet()) { 
+                executorService.execute(sendFile(w.getValue())); 
             }  
-//try {
-//	executorService.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
-//	finish();
-//} catch (InterruptedException e) {
-//
-//}
-    		executorService.shutdown();
+    		executorService.shutdown();//不再接受新的线程
             while(true){  
                if(executorService.isTerminated()){  
+            	   
                    long endTime   = System.currentTimeMillis(); //程序结束记录时间
                    long TotalTime = endTime - startTime;       //总消耗时间
-                   System.out.println("用时:  " + ((double)TotalTime)/1000+"s" ); 
-                    finish();
-                    System.out.println("所有的子线程都结束了！");  
-                    break;  
+                   System.out.println("用时:  " + ((double)TotalTime)/1000+"s" );
+                   
+                   finish();
+                   System.out.println("所有的子线程都结束了！");  
+                   break;  
                 }  
                 try {
 					Thread.sleep(1000);
@@ -81,8 +90,7 @@ public class client {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}    
-            }    		
-        	
+            }    	
         }  
           
       /*
@@ -91,13 +99,18 @@ public class client {
         private void getFilePath(String fileName){  
         	File file1 =  new File(fileName);
             try {
-            	HashMap<Integer, Float> size=Network.net();
-            	names = file.divideFile(file1.getAbsolutePath(),204800);
-            	ips=Network.IP(size);
+//            	HashMap<Integer, Float> size=Network.net();
+            	names = file.divideFile(file1.getAbsolutePath(),file_size);
+//            	ips=Network.IP(size);
+            	//手动输入vpn绑定ip
+            	ips.put(1,"192.168.30.10");
+            	ips.put(2,"192.168.30.11");
+            	ips.put(3,"192.168.30.12");
+            	ips.put(4,"192.168.30.13");
             	for(Map.Entry<Integer, String> w:ips.entrySet()) {
                     System.out.println(w.getValue());
+                    new Thread(ppp(w.getValue(),portP)).start();
                 }
-            	//String[] name= {"C:\\test\\test.sql1","C:\\test\\test.sql2"};
             } catch (Exception e) {
                 // TODO Auto-generated catch block
                 e.printStackTrace();
@@ -108,60 +121,49 @@ public class client {
                    * 连接并发送文件
                    */          
         private static Runnable sendFile(String localIp){  
-            return new Runnable(){  
-                  
-                private Socket socket = null;  
-                private String ip ="120.78.188.54";  
-                private int port = 6667;  
+            return new Runnable(){                    
+                private Socket socket = null;    
+                private int port = 6666; //本地绑定端口号 
                 private String filePath;
                 public void run() {   
 		            if(createConnection()){
-		                        try {  
-		                            DataOutputStream dos = new DataOutputStream(socket.getOutputStream());  
-		                while(count<names.length) {
-		                    synchronized (object){
-		                    	filePath=names[count++];
-		                    }
-		                	//long startTime = System.currentTimeMillis(); //程序开始记录时间
-		                    System.out.println("开始发送文件:" + filePath);  
-		                    File file1 = new File(filePath);   
+		            	try {  
+		                	DataOutputStream dos = new DataOutputStream(socket.getOutputStream());  
+			                while(count<names.length) {
+			                    synchronized (object){
+			                    	filePath=names[count++];
+			                    }
+			                    //long startTime = System.currentTimeMillis(); //程序开始记录时间
+			                    System.out.println("开始发送文件:" + filePath);  
+			                    File file1 = new File(filePath);   
 		                        int bufferSize = 8192;  
 		                        byte[] buf = new byte[bufferSize];  
-		                            DataInputStream fis = new DataInputStream(new BufferedInputStream(new FileInputStream(filePath)));  
+		                        DataInputStream fis = new DataInputStream(new BufferedInputStream(new FileInputStream(filePath)));  
 		                              
-		                            dos.writeUTF(file1.getName());  
-		                            dos.flush();  
-		                            dos.writeUTF(file.getCRC32(filePath));
-		                            dos.flush();  
-		                            dos.writeLong(file1.length());  
-		                            dos.flush();  
+		                        dos.writeUTF(file1.getName());  
+		                        dos.flush();  
+		                     //   dos.writeUTF(file.getCRC32(filePath));
+		                     //   dos.flush();  
+		                        dos.writeLong(file1.length());  
+		                        dos.flush();  
 		                              
-		                            int read = 0;  
-		                            int passedlen = 0;  
-		                            long length = file1.length();    //获得要发送文件的长度  
-		                            while ((read = fis.read(buf)) != -1) {  
-		                                passedlen += read;  
-		                              //  System.out.println("已经完成文件 [" + file.getName() + "]百分比: " + passedlen * 100L/ length + "%");  
-		                                dos.write(buf, 0, read);  
-		                            }  
-		                           System.out.println("文件 " + filePath + "传输完成!"); 
-		                           dos.flush();  
-		                           fis.close();  
-		                }
-		                           dos.close();  
-								socket.close();
-		                        } catch (Exception e) {  
-		                            e.printStackTrace();  
+		                        int read = 0;  
+		                        int passedlen = 0;  
+		                        long length = file1.length();    //获得要发送文件的长度  
+		                        while ((read = fis.read(buf)) != -1) {  
+		                        	passedlen += read;  
+		                            dos.write(buf, 0, read);  
 		                        }  
-		                
-		                           
-		//                        long endTime   = System.currentTimeMillis(); //程序结束记录时间
-		//                        long TotalTime = endTime - startTime;       //总消耗时间 
-		                      //  System.out.println(localIp+"用时:  " + ((double)TotalTime)/1000+"s" ); 
-	                        
-	                    }  
-	                
-                
+		                        System.out.println("文件 " + filePath + "传输完成!"); 
+		                        dos.flush();  
+		                        fis.close();  
+		                }
+		                dos.close();  
+						socket.close();
+		           } catch (Exception e) {  
+		                e.printStackTrace();  
+		           }  
+	            }  
             }
         
                
@@ -170,16 +172,9 @@ public class client {
             */
                 private boolean createConnection() {  
                     try {  
-                        //socket = new Socket(ip, port);
-//                    	socket = new java.net.Socket();
-//                    	socket.connect(new InetSocketAddress(ip, port));
-                    	
-//                    	NetworkInterface nif = NetworkInterface.getByName("eth26");
-//                    	System.out.println((nif == null) ? "网络接口不存在!" : nif);
-//                    	Enumeration<InetAddress> nifAddresses = nif.getInetAddresses();
                     	socket = new java.net.Socket();
-                    	socket.bind(new InetSocketAddress(localIp, 6665));
-                    	socket.connect(new InetSocketAddress(ip, port));
+                    	socket.bind(new InetSocketAddress(localIp, port_a));
+                    	socket.connect(new InetSocketAddress(server_ip, port));
                         System.out.println("连接服务器成功！");  
                         return true;  
                     } catch (Exception e) {  
@@ -190,10 +185,13 @@ public class client {
                   
             };  
         }  
-          
+         
+        /*
+         * 发送finish信号
+         */
         public static void finish() {
         	try {
-				Socket socket1 = new Socket("120.78.188.54", 6668);
+				Socket socket1 = new Socket(server_ip, port_f);
 				//2、获取输出流，向服务器端发送信息 
                 DataOutputStream dos = new DataOutputStream(socket1.getOutputStream());  
                 dos.writeUTF(fileName);  
@@ -208,26 +206,25 @@ public class client {
 			}
         	
         }
-        	static int portA=6666;
-        private static Runnable ppp(String localIp,String ip,int port) {
+        
+        private static Runnable ppp(String localIp,int port) {
        	 return new Runnable(){ 
        		 public void run() {
 	        		 try {
 		            	Socket socket1 = new java.net.Socket();
 		            	socket1.bind(new InetSocketAddress(localIp,portA++));
-		            	socket1.connect(new InetSocketAddress(ip, port));
+		            	socket1.connect(new InetSocketAddress(server_ip, port));
 						//2、获取输出流，向服务器端发送信息 
 		                DataOutputStream dos = new DataOutputStream(socket1.getOutputStream()); 
 		        		//3、获取输入流，并读取客户端信息
 		        		DataInputStream dis = new DataInputStream(new BufferedInputStream(socket1.getInputStream()));
 		        		while(true) { 
 			                //dos.writeUTF("finish"); 
-		        			//System.out.println("okkkk");
 			                dos.writeUTF("ok");
 			                dos.flush(); 
-			        		String a=dis.readUTF();
-			        		System.out.println(localIp+" "+a);
-			                Thread.sleep(10000);
+//			        		String a=dis.readUTF();
+			        		//System.out.println(localIp+" "+a);
+			                Thread.sleep(50000);
 		        		} 
 					} catch (Exception e) {
 						// TODO Auto-generated catch block
@@ -238,9 +235,7 @@ public class client {
       	 };
       	
       }
-        public static void main(String[] args){  
-        	
+        public static void main(String[] args){
             new client().service();  
-            //finish();
         }  
 }

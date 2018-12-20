@@ -5,7 +5,6 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.zip.CRC32;
@@ -14,32 +13,33 @@ import java.util.zip.CheckedInputStream;
 import netInformation.Network;
 
 public class file {
-    
-    public static void main(String[] args) throws Exception {
-    	
+	static String file_temp="C:/test/";//切分后文件保存路径
+	
+	/*
+	 * test
+	 */
+//    public static void main(String[] args) throws Exception {
+//    	
 //        File file =  new File("D:/test.sql");
 //        Network network=new Network();
-//        //HashMap<Integer, Float> size=Network.net();
+//        HashMap<Integer, Float> size=Network.net();
 //        try {
-//        	String[] names = divideFile(file.getAbsolutePath(),204800);
-////        	for(Map.Entry<Integer, String> w:names.entrySet()) {
-////                System.out.println(w.getValue());
-////            }
-//        	ArrayList<String> fileNames=new ArrayList<String>(Arrays.asList(names));
-//            uniteFile(fileNames,"C:/test/test.sql");
+//        	HashMap<Integer,String> names = divideFile(file.getAbsolutePath(),size);
+//        	for(Map.Entry<Integer, String> w:names.entrySet()) {
+//                System.out.println(w.getValue());
+//            }
+//        	String[] name= {"C:\\test\\test.sql1","C:\\test\\test.sql2"};
+//            uniteFile(name,"C:/test/test.sql");
 //        } catch (Exception e) {
 //            // TODO Auto-generated catch block
 //            e.printStackTrace();
 //        }
-    	System.out.println(getCRC32("C:/test/test.sql"));
-    	System.out.println(getCRC32("D:/test.sql"));
-    }
+//    }
 
     /**
      * 分割文件
      * @param fileName 待分割的文件名
      * @param size 小文件的大小，以字节为单位
-     * @param suffix 生成的文件名后缀
      * @return  分割后的小文件的文件名
      * @throws Exception 分割过程中可能抛出的异常
      */
@@ -59,7 +59,7 @@ public class file {
         long inEndIndex = 0;
         int inBeginIndex = 0;
         for (int outFileIndex = 0; outFileIndex < num; outFileIndex++) {
-            File outFile = new File("C:/test/", inFile.getName() +"_"+ outFileIndex);
+            File outFile = new File(file_temp, inFile.getName() + "_"+outFileIndex);
             FileOutputStream out = new FileOutputStream(outFile);
             inEndIndex += size;
             inEndIndex = (inEndIndex > fileLength) ? fileLength : inEndIndex;
@@ -98,7 +98,11 @@ public class file {
     }
     
     
-
+	/*
+	 * 获取文件CRC校验码
+	 * @param 文件全路径
+	 * @return CRC检验吗
+	 */
 	public static String getCRC32(String fileUri) {
 		CRC32 crc32 = new CRC32();
 		FileInputStream fileinputstream = null;
@@ -131,5 +135,23 @@ public class file {
 			}
 		}
 		return crc;
+	}
+	
+	/*
+	 * 删除中间切分文件块
+	 */
+	public static void delete(String[] filenames) {
+		try {
+			for(int i=0;i<filenames.length;i++) {
+				File file = new File(filenames[i]);
+				if(file.delete()) {
+					System.out.println( file.getName() + " is deleted!");
+				}else {
+					System.out.println("Delete operation is failed.");
+				}
+			}
+		} catch(Exception e) {
+			e.printStackTrace();
+		}
 	}
 }
